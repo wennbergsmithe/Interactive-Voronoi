@@ -1,0 +1,217 @@
+
+<!-- THIS CODE WAS ADAPTED FROM THE CODE FOUND AT: http://bl.ocks.org/shawnbot/8059739
+    - authors: Shawn Allen, Eli Wennberg Smith
+    - color schemes from www.colorbrewer2.org
+ -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Interactive Voronoi</title>
+        <style>
+
+            body {
+                overflow: hidden;
+            }
+
+            path {
+                fill-opacity: .8;
+                stroke: #000;
+            }
+
+            path:first-child {
+                fill: #fff !important;  
+            }
+
+            circle {
+                fill: #fff;
+                stroke: #000;
+                pointer-events: none;
+            }
+
+            .grns .q0{fill:rgb(247,252,253)}
+            .grns .q1{fill:rgb(229,245,249)}
+            .grns .q2{fill:rgb(204,236,230)}
+            .grns .q3{fill:rgb(153,216,201)}
+            .grns .q4{fill:rgb(102,194,164)}
+            .grns .q5{fill:rgb(65,174,118)}
+            .grns .q6{fill:rgb(35,139,69)}
+            .grns .q7{fill:rgb(0,109,44)}
+            .grns .q8{fill:rgb(0,68,27)}
+            
+            .purp .q0{fill:rgb(247,252,253)}
+            .purp .q1{fill:rgb(224,236,244)}
+            .purp .q2{fill:rgb(191,211,230)}
+            .purp .q3{fill:rgb(158,188,218)}
+            .purp .q4{fill:rgb(140,150,198)}
+            .purp .q5{fill:rgb(140,107,177)}
+            .purp .q6{fill:rgb(136,65,157)}
+            .purp .q7{fill:rgb(129,15,124)}
+            .purp .q8{fill:rgb(77,0,75)}
+
+            .warm .q0{fill:rgb(255,255,204)}
+            .warm .q1{fill:rgb(255,237,160)}
+            .warm .q2{fill:rgb(254,217,118)}
+            .warm .q3{fill:rgb(254,178,76)}
+            .warm .q4{fill:rgb(253,141,60)}
+            .warm .q5{fill:rgb(252,78,42)}
+            .warm .q6{fill:rgb(227,26,28)}
+            .warm .q7{fill:rgb(189,0,38)}
+            .warm .q8{fill:rgb(128,0,38)}
+
+            .grey .q0{fill:rgb(255,255,255)}
+            .grey .q1{fill:rgb(240,240,240)}
+            .grey .q2{fill:rgb(217,217,217)}
+            .grey .q3{fill:rgb(189,189,189)}
+            .grey .q4{fill:rgb(150,150,150)}
+            .grey .q5{fill:rgb(115,115,115)}
+            .grey .q6{fill:rgb(82,82,82)}
+            .grey .q7{fill:rgb(37,37,37)}
+            .grey .q8{fill:rgb(0,0,0)}
+
+        </style>
+    </head>
+    <b><p>Click in the white area below to add points to the Voronoi Diagram. They are colored based on the order in which they were added.</p></b>
+    <body>
+        Color Scheme: <select id="colurz"> 
+            <option value="warm">Warm Colors</option>
+            <option value="grns">Greens</option>
+            <option value="purp">Purples</option>
+            <option value="grey">Grey Scale</option>
+            
+        </select>
+        Line Interpolation: <select id="interpolate"> 
+            <option>linear</option>
+            <option>basis-closed</option>
+            <option>basis</option>
+            <option>cardinal-closed</option>
+            <option>cardinal</option>
+            <option>monotone</option>
+            <option>step</option>
+            <option>step-before</option>
+            <option>step-after</option>
+        </select>
+
+        <input type="checkbox" id="vsym">Vertical Line of Symmetry</input>
+        <input type="checkbox" id="hsym">Horizontal Line of Symmetry</input>
+        <input type="checkbox" id="prev" checked="true" onchange="prev()">Preview Point Region</input>
+        <button type="button" id="clear" onclick="noMas();">Clear</button>
+        <script src="https://d3js.org/d3.v3.min.js"></script>
+        <script>
+
+            var width = window.innerWidth - 15,
+                height = window.innerHeight - 100;
+
+            var num = 0;
+            var colors = "warm";
+            var showMouse = true;
+            var vertices = d3.range(1).map(function(d) {
+                return [Math.random() * width, Math.random() * height];
+            });
+
+            var voronoi = d3.geom.voronoi()
+                .clipExtent([[0, 0], [width, height]]);
+
+            var svg = d3.select("body")
+            	.append("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("class", colors)
+                .on("mousemove", function() {
+                	if(showMouse){
+                  		vertices[0] = d3.mouse(this);
+                  		redraw();
+                	}
+                })
+                .on("click",add);
+
+            var path = svg.append("g").selectAll("path");
+
+            var line = d3.svg.line();
+            var select = d3.select("#interpolate")
+                .on("change", function() {
+                    line.interpolate(this.value);
+                    redraw();
+                })
+            line.interpolate(select.property("value"));
+            select = d3.select("#colurz")
+                .on("change",function(){
+                    colors = this.value;
+                    redraw();
+                })
+            redraw();
+            //document.getElementById("clear").onclick = noMas();
+
+            function prev(){
+            	showMouse = document.getElementById("prev").checked;
+            	if(!showMouse){
+            		vertices.shift();
+            	}
+            	redraw();
+            }
+            function redraw() {
+
+            	
+                svg.attr("class",colors)
+                svg.selectAll("circle")
+                    .data(vertices.slice(1))
+                    .enter().append("circle")
+                    .attr("transform", function(d) { return "translate(" + d + ")"; })
+                    .attr("r", 2);
+                path = path.data(voronoi(vertices), String);
+
+                path.exit().remove();
+
+                path.enter().append("path")
+                    .attr("class", function(d, i) {
+                        var order = (i-1) / num;
+                        var index = Math.floor(order * 9);
+                        return out ="q" + index;
+                    });
+
+                
+                path.attr("d", function(d) {
+                	if(d != undefined){
+                		return line(d) + "Z";	
+                	}
+                    
+                });
+
+                path.order();
+            }
+            function noMas(){
+            	vertices = [];
+            	redraw();
+            	num = 0;
+            	svg.selectAll("circle").remove();
+            }
+            function add(){
+
+            	var coords = [];
+            	coords.push(d3.mouse(this));
+            	num++;
+
+            	if(document.getElementById("vsym").checked){
+            		var len = coords.length;
+            		for (var i = 0; i < len; i++) {
+            			coords.push([width - coords[i][0], coords[i][1]]);
+            			num++;
+            		}
+                	
+            	}
+            	if(document.getElementById("hsym").checked){
+            		var len = coords.length;
+                	for (var i = 0; i < len; i++) {
+            			coords.push([coords[i][0], height - coords[i][1]]);
+            			num++;
+            		}
+            	}
+            	for (var i = 0; i < coords.length; i++) {
+            		vertices.push(coords[i]);
+            	}
+                redraw();
+            }
+
+        </script>
+    </body>
+</html>
